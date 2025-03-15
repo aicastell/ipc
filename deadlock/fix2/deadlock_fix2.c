@@ -1,0 +1,70 @@
+#include <stdio.h>
+#include <pthread.h>
+#include <unistd.h>  // Para la función sleep
+
+pthread_mutex_t mutex1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex2 = PTHREAD_MUTEX_INITIALIZER;
+
+void* thread1_func(void* arg)
+{
+    while (1) {
+        pthread_mutex_lock(&mutex1);
+        printf("Thread 1: Bloqueó mutex1\n");
+
+        sleep(1); // Simula una ejecución prolongada
+
+        printf("Thread 1: Intentando bloquear mutex2...\n");
+        if (pthread_mutex_trylock(&mutex2) == 0) {
+            printf("Thread 1: Bloqueó mutex2\n");
+
+            // Realiza la operación crítica
+            pthread_mutex_unlock(&mutex2);
+            pthread_mutex_unlock(&mutex1);
+            break; // Sale del bucle después de completar la operación
+        } else {
+            // Si no puede adquirir mutex2, libera mutex1 y espera un poco
+            pthread_mutex_unlock(&mutex1);
+            printf("Thread 1: No pudo bloquear mutex2, reintentando...\n");
+            sleep(1); // Espera un poco antes de reintentar
+        }
+    }
+    return NULL;
+}
+
+void* thread2_func(void* arg)
+{
+    while (1) {
+        pthread_mutex_lock(&mutex2);
+        printf("Thread 2: Bloqueó mutex2\n");
+
+        sleep(1); // Simula una ejecución prolongada
+
+        printf("Thread 2: Intentando bloquear mutex1...\n");
+        if (pthread_mutex_trylock(&mutex1) == 0) {
+            printf("Thread 2: Bloqueó mutex1\n");
+
+            // Realiza la operación crítica
+            pthread_mutex_unlock(&mutex1);
+            pthread_mutex_unlock(&mutex2);
+            break; // Sale del bucle después de completar la operación
+        } else {
+            // Si no puede adquirir mutex1, libera mutex2 y espera un poco
+            pthread_mutex_unlock(&mutex2);
+            printf("Thread 2: No pudo bloquear mutex1, reintentando...\n");
+            sleep(1); // Espera un poco antes de reintentar
+        }
+    }
+    return NULL;
+}
+
+int main() {
+    pthread_t thread1, thread2;
+
+    pthread_create(&thread1, NULL, thread1_func, NULL);
+    pthread_create(&thread2, NULL, thread2_func, NULL);
+
+    pthread_join(thread1, NULL);
+    pthread_join(thread2, NULL);
+
+    return 0;
+}
